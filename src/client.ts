@@ -36,6 +36,17 @@ import type {
   SearchResult,
 } from './types.js';
 
+interface SharedMailbox {
+  mailboxId?: string;
+  isLoaded?: boolean;
+  folders?: KerioFolder[];
+}
+
+interface SharedMailboxResult {
+  mailboxes?: SharedMailbox[];
+  list?: SharedMailbox[];
+}
+
 export class KerioClient {
   private server: string;
   private username: string;
@@ -1107,8 +1118,29 @@ export class KerioClient {
    * Get calendar folders (filters Folders.get to FCalendar type)
    */
   public async getCalendarFolders(): Promise<KerioFolder[]> {
-    const result = await this.jsonRpcRequest<FoldersGetResult>('Folders.get', {});
-    return result.list.filter((folder) => folder.type === 'FCalendar');
+    const own = await this.jsonRpcRequest<FoldersGetResult>('Folders.get', {});
+    const [shared, publicFolders] = await Promise.all([
+      this.jsonRpcRequest<SharedMailboxResult>('Folders.getSharedMailboxList', {})
+        .catch((): SharedMailboxResult => ({ mailboxes: [] })),
+      this.jsonRpcRequest<FoldersGetResult>('Folders.getPublic', {})
+        .catch(() => ({ list: [] })),
+    ]);
+    const mailboxes = shared.mailboxes ?? shared.list ?? [];
+    const loaded = mailboxes.flatMap(({ folders = [], isLoaded = true }) =>
+      isLoaded ? folders : []
+    );
+    const unloaded = await Promise.all(mailboxes
+      .filter(({ isLoaded, mailboxId }) => isLoaded === false && mailboxId)
+      .map(({ mailboxId }) => this.jsonRpcRequest<FoldersGetResult>(
+        'Folders.getShared', { mailboxId }
+      ).catch(() => ({ list: [] }))));
+    const folders = [
+      ...own.list,
+      ...loaded,
+      ...unloaded.flatMap(({ list }) => list),
+      ...publicFolders.list,
+    ].filter((folder) => folder.type === 'FCalendar');
+    return [...new Map(folders.map((folder) => [folder.id, folder])).values()];
   }
 
   /**
