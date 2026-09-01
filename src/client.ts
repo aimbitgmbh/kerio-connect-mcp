@@ -4,6 +4,7 @@
  */
 
 import { request } from 'undici';
+import { PACKAGE_VERSION } from './version.js';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
@@ -184,7 +185,7 @@ export class KerioClient {
       application: {
         name: 'Kerio MCP Server',
         vendor: 'MCP',
-        version: '1.0.0',
+        version: PACKAGE_VERSION,
       },
     };
 

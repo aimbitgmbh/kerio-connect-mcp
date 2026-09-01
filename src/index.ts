@@ -23,6 +23,7 @@ import {
 
 import { config } from './config.js';
 import { KerioClient } from './client.js';
+import { PACKAGE_VERSION } from './version.js';
 import {
   getToolDefinitions,
   notesList,
@@ -71,7 +72,7 @@ const client = new KerioClient(config.toKerioConfig());
 const server = new Server(
   {
     name: 'kerio-connect-mcp',
-    version: '1.0.0',
+    version: PACKAGE_VERSION,
   },
   {
     capabilities: {
