@@ -1,32 +1,37 @@
 {
   "name": "@aimbitgmbh/kerio-connect-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for Kerio Connect - Mail, Calendar, Contacts, Tasks, and Notes management",
   "author": "aimbit GmbH <info@aimbit.de>",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aimbitgmbh/kerio-connect-mcp.git"
+    "url": "git+https://github.com/aimbitgmbh/kerio-connect-mcp.git"
   },
   "homepage": "https://github.com/aimbitgmbh/kerio-connect-mcp#readme",
   "bugs": {
     "url": "https://github.com/aimbitgmbh/kerio-connect-mcp/issues"
   },
   "bin": {
-    "kerio-connect-mcp": "./dist/index.js"
+    "kerio-connect-mcp": "dist/index.js"
   },
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "dev": "tsx --import dotenv/config src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "prepublishOnly": "npm run build",
+    "release:check": "npm test && npm audit --omit=dev --audit-level=high && npm pack --dry-run",
+    "prepublishOnly": "npm test",
     "clean": "rm -rf dist"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "mcp",
