@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import type { KerioClient } from './client.js';
-import type { KerioNote, FolderInfo } from './types.js';
+import type { KerioNote, FolderInfo, KerioFolder } from './types.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -740,7 +740,7 @@ export const CalendarsListSchema = z.object({
   folder: z
     .string()
     .optional()
-    .describe('Folder name to search in (optional - if omitted, searches ALL calendar folders)'),
+    .describe('Calendar name, owner/name, owner email/name, or folder ID (optional - if omitted, searches ALL calendars)'),
   startDate: z
     .string()
     .optional()
@@ -773,7 +773,7 @@ export const CalendarsSearchSchema = z.object({
   folder: z
     .string()
     .optional()
-    .describe('OPTIONAL - Folder name to search in. If omitted, searches ALL calendar folders.'),
+    .describe('OPTIONAL - Calendar name, owner/name, owner email/name, or folder ID. If omitted, searches ALL calendars.'),
 });
 
 export const CalendarsCreateSchema = z.object({
@@ -798,7 +798,7 @@ export const CalendarsCreateSchema = z.object({
   folder: z
     .string()
     .optional()
-    .describe('Folder name to create event in (optional, uses first folder)'),
+    .describe('Calendar name, owner/name, owner email/name, or folder ID (optional, uses first available calendar; personal calendars are ordered first)'),
   reminderMinutes: z
     .number()
     .optional()
@@ -1047,23 +1047,55 @@ function formatContact(contact: any): string {
 }
 
 /**
- * Helper: Find calendar folder by name
+ * Helper: Format a calendar folder as an unambiguous selector.
  */
-async function findCalendarFolderByName(
+function formatCalendarFolderSelector(folder: KerioFolder): string {
+  const owner = folder.emailAddress || folder.ownerName;
+  const name = owner ? `${owner}/${folder.name}` : folder.name;
+  return `${name} [${folder.id}]`;
+}
+
+/**
+ * Helper: Find a calendar folder by ID, qualified owner/name, or unique name.
+ */
+async function findCalendarFolder(
   client: KerioClient,
-  folderName: string
+  selector: string
 ): Promise<string> {
   const folders = await client.getCalendarFolders();
-  const folder = folders.find((f) => f.name.toLowerCase() === folderName.toLowerCase());
+  const normalizedSelector = selector.trim().toLowerCase();
 
-  if (!folder) {
-    const available = folders.map((f) => f.name).join(', ');
+  const idMatch = folders.find((folder) => folder.id.toLowerCase() === normalizedSelector);
+  if (idMatch) return idMatch.id;
+
+  const qualifiedMatches = folders.filter((folder) => {
+    const owners = [folder.emailAddress, folder.ownerName]
+      .filter((owner): owner is string => Boolean(owner));
+    return owners.some((owner) =>
+      `${owner}/${folder.name}`.toLowerCase() === normalizedSelector
+    );
+  });
+
+  if (qualifiedMatches.length === 1) return qualifiedMatches[0].id;
+
+  const nameMatches = folders.filter(
+    (folder) => folder.name.toLowerCase() === normalizedSelector
+  );
+
+  if (nameMatches.length === 1) return nameMatches[0].id;
+
+  const matches = qualifiedMatches.length > 1 ? qualifiedMatches : nameMatches;
+  if (matches.length > 1) {
+    const options = matches.map(formatCalendarFolderSelector).join(', ');
     throw new Error(
-      `Calendar folder '${folderName}' not found. Available calendar folders: ${available}`
+      `Calendar selector '${selector}' is ambiguous. Use an owner-qualified name or folder ID. Matches: ${options}`
     );
   }
 
-  return folder.id;
+  const available = folders.map(formatCalendarFolderSelector).join(', ');
+  throw new Error(
+    `Calendar selector '${selector}' not found. Available calendars: ${available}`
+  );
 }
 
 /**
@@ -2714,16 +2746,12 @@ export async function calendarsList(client: KerioClient, args: unknown): Promise
   if (params.folder) {
     // Specific folder requested
     try {
-      const folderId = await findCalendarFolderByName(client, params.folder);
+      const folderId = await findCalendarFolder(client, params.folder);
       folderIds = [folderId];
       folderContext = `from calendar "${params.folder}"`;
     } catch (error) {
-      // Folder not found - provide helpful error
-      const folders = await client.getCalendarFolders();
-      const available = folders.map((f) => f.name).join(', ');
-      return `ERROR: Calendar folder "${params.folder}" not found.\n\n` +
-        `Available calendars: ${available}\n\n` +
-        `Tip: Omit the folder parameter to search across all calendars.`;
+      const message = error instanceof Error ? error.message : String(error);
+      return `ERROR: ${message}\n\nTip: Omit the folder parameter to search across all calendars.`;
     }
   } else {
     // No folder specified - search ALL calendar folders
@@ -2769,13 +2797,12 @@ export async function calendarsSearch(client: KerioClient, args: unknown): Promi
 
   if (params.folder) {
     try {
-      const folderId = await findCalendarFolderByName(client, params.folder);
+      const folderId = await findCalendarFolder(client, params.folder);
       folderIds = [folderId];
       folderContext = `in calendar "${params.folder}"`;
     } catch (error) {
-      const folders = await client.getCalendarFolders();
-      const available = folders.map((f) => f.name).join(', ');
-      return `ERROR: Calendar folder "${params.folder}" not found.\n\nAvailable: ${available}`;
+      const message = error instanceof Error ? error.message : String(error);
+      return `ERROR: ${message}`;
     }
   } else {
     folderContext = 'across all calendars';
@@ -2806,7 +2833,7 @@ export async function calendarsCreate(client: KerioClient, args: unknown): Promi
   // Get folder ID
   let folderId: string;
   if (params.folder) {
-    folderId = await findCalendarFolderByName(client, params.folder);
+    folderId = await findCalendarFolder(client, params.folder);
   } else {
     const folders = await client.getCalendarFolders();
     if (folders.length === 0) {
@@ -3541,7 +3568,7 @@ const allToolDefinitions = [
       properties: {
         folder: {
           type: 'string',
-          description: 'Calendar folder name (optional - if omitted, searches ALL calendars)',
+          description: 'Calendar name, owner/name, owner email/name, or folder ID (optional - if omitted, searches ALL calendars)',
         },
         startDate: {
           type: 'string',
@@ -3583,7 +3610,7 @@ const allToolDefinitions = [
         },
         folder: {
           type: 'string',
-          description: 'OPTIONAL - Calendar folder to search in. If omitted, searches ALL calendars.',
+          description: 'OPTIONAL - Calendar name, owner/name, owner email/name, or folder ID. If omitted, searches ALL calendars.',
         },
       },
       required: ['query'],
@@ -3624,7 +3651,7 @@ const allToolDefinitions = [
         },
         folder: {
           type: 'string',
-          description: 'Calendar folder name (optional, uses first calendar)',
+          description: 'Calendar name, owner/name, owner email/name, or folder ID (optional, uses first available calendar; personal calendars are ordered first)',
         },
         reminderMinutes: {
           type: 'number',
