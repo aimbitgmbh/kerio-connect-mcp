@@ -24,6 +24,7 @@
   "scripts": {
     "dev": "tsx --import dotenv/config src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "prepublishOnly": "npm run build",
     "clean": "rm -rf dist"
   },

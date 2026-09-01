@@ -114,6 +114,10 @@ KERIO_ENABLE_SEND=false
 - `calendars_update` - Update event details
 - `calendars_delete` - Delete events
 
+Calendar discovery includes personal, shared, and public calendars. When multiple
+calendars have the same name, select one with `owner/calendar`,
+`owner-email/calendar`, or its full folder ID.
+
 ### Contacts Module
 - `contacts_list` - List contacts
 - `contacts_get` - Get contact details
