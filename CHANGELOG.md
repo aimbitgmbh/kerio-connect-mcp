@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file. The project
 follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-09-02
+
+### Added
+
+- Opt-in live compatibility test for OpenAI-compatible tool-calling models.
+- Regression coverage for Qwen-style serialized number, boolean, and array
+  arguments.
+
+### Changed
+
+- Made MCP tool execution tolerant of unambiguously double-serialized JSON
+  values while retaining strict Zod validation for invalid values.
+- Optimized shared-calendar tool descriptions so owner-qualified selectors such
+  as `Timon/Team` are preserved by Qwen 3.8 27B.
+- Updated the documented primary test model from gpt-oss:20b to Qwen 3.8 27B.
+
 ## [0.2.0] - 2026-09-01
 
 ### Added
@@ -29,5 +45,6 @@ follows [Semantic Versioning](https://semver.org/).
 
 - Initial public release of the Kerio Connect MCP server.
 
+[0.2.1]: https://github.com/aimbitgmbh/kerio-connect-mcp/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/aimbitgmbh/kerio-connect-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/aimbitgmbh/kerio-connect-mcp/releases/tag/v0.1.0

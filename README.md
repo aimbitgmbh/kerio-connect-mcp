@@ -5,7 +5,12 @@
 
 A Model Context Protocol (MCP) server providing programmatic access to Kerio Connect for Mail, Calendar, Contacts, Tasks, and Notes management.
 
-**Tested and optimized for gpt-oss:20b**
+**Tested and optimized for Qwen 3.8 27B tool calling**
+
+The server accepts standards-compliant MCP arguments and also normalizes common
+OpenAI-compatible tool-call serialization issues, such as numbers, booleans, or
+arrays returned as JSON strings. This keeps strict validation in place while
+making tool execution reliable with Qwen.
 
 ## Prerequisites
 
@@ -117,6 +122,22 @@ KERIO_ENABLE_SEND=false
 Calendar discovery includes personal, shared, and public calendars. When multiple
 calendars have the same name, select one with `owner/calendar`,
 `owner-email/calendar`, or its full folder ID.
+
+## Model Compatibility Test
+
+The repository includes an opt-in live test for OpenAI-compatible model APIs.
+It checks tool selection, argument typing, email-recipient arrays, and qualified
+shared-calendar selection without connecting to Kerio or changing Kerio data.
+
+```bash
+MCP_MODEL_TEST_BASE_URL="https://your-model-endpoint.example/v1" \
+MCP_MODEL_TEST_API_KEY="your-api-key" \
+MCP_MODEL_TEST_MODEL="your-model-name" \
+npm run test:model
+```
+
+The API key is read from the process environment only and is never written by
+the test script.
 
 ### Contacts Module
 - `contacts_list` - List contacts

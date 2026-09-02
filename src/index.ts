@@ -24,6 +24,7 @@ import {
 import { config } from './config.js';
 import { KerioClient } from './client.js';
 import { PACKAGE_VERSION } from './version.js';
+import { normalizeToolArguments } from './tool-arguments.js';
 import {
   getToolDefinitions,
   notesList,
@@ -65,6 +66,8 @@ import {
   calendarsDelete,
 } from './tools.js';
 
+const toolDefinitions = getToolDefinitions(config.enableSend);
+
 // Initialize Kerio client
 const client = new KerioClient(config.toKerioConfig());
 
@@ -87,7 +90,7 @@ const server = new Server(
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
-    tools: getToolDefinitions(config.enableSend),
+    tools: toolDefinitions,
   };
 });
 
@@ -99,161 +102,167 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // Ensure authenticated before any operation
     await client.ensureAuthenticated();
 
+    const toolDefinition = toolDefinitions.find((tool) => tool.name === request.params.name);
+    const args = normalizeToolArguments(
+      request.params.arguments ?? {},
+      toolDefinition?.inputSchema
+    );
+
     let result: string;
 
     switch (request.params.name) {
       // Shared/General Tools
       case 'folders_list':
-        result = await foldersList(client, request.params.arguments ?? {});
+        result = await foldersList(client, args);
         break;
 
       case 'folders_create':
-        result = await foldersCreate(client, request.params.arguments ?? {});
+        result = await foldersCreate(client, args);
         break;
 
       // Notes Module
       case 'notes_list':
-        result = await notesList(client, request.params.arguments ?? {});
+        result = await notesList(client, args);
         break;
 
       case 'notes_search':
-        result = await notesSearch(client, request.params.arguments ?? {});
+        result = await notesSearch(client, args);
         break;
 
       case 'notes_count':
-        result = await notesCount(client, request.params.arguments ?? {});
+        result = await notesCount(client, args);
         break;
 
       case 'notes_create':
-        result = await notesCreate(client, request.params.arguments ?? {});
+        result = await notesCreate(client, args);
         break;
 
       case 'notes_move':
-        result = await notesMove(client, request.params.arguments ?? {});
+        result = await notesMove(client, args);
         break;
 
       case 'notes_update':
-        result = await notesUpdate(client, request.params.arguments ?? {});
+        result = await notesUpdate(client, args);
         break;
 
       case 'notes_delete':
-        result = await notesDelete(client, request.params.arguments ?? {});
+        result = await notesDelete(client, args);
         break;
 
       // Tasks Module
       case 'tasks_list':
-        result = await tasksList(client, request.params.arguments ?? {});
+        result = await tasksList(client, args);
         break;
 
       case 'tasks_create':
-        result = await tasksCreate(client, request.params.arguments ?? {});
+        result = await tasksCreate(client, args);
         break;
 
       case 'tasks_complete':
-        result = await tasksComplete(client, request.params.arguments ?? {});
+        result = await tasksComplete(client, args);
         break;
 
       case 'tasks_update':
-        result = await tasksUpdate(client, request.params.arguments ?? {});
+        result = await tasksUpdate(client, args);
         break;
 
       case 'tasks_delete':
-        result = await tasksDelete(client, request.params.arguments ?? {});
+        result = await tasksDelete(client, args);
         break;
 
       case 'tasks_search':
-        result = await tasksSearch(client, request.params.arguments ?? {});
+        result = await tasksSearch(client, args);
         break;
 
       // Mail Module
       case 'mails_list':
-        result = await mailsList(client, request.params.arguments ?? {});
+        result = await mailsList(client, args);
         break;
 
       case 'mails_get':
-        result = await mailsGet(client, request.params.arguments ?? {});
+        result = await mailsGet(client, args);
         break;
 
       case 'mails_show_recent':
-        result = await mailsShowRecent(client, request.params.arguments ?? {});
+        result = await mailsShowRecent(client, args);
         break;
 
       case 'mails_search':
-        result = await mailsSearch(client, request.params.arguments ?? {});
+        result = await mailsSearch(client, args);
         break;
 
       case 'mails_send':
-        result = await mailsSend(client, request.params.arguments ?? {});
+        result = await mailsSend(client, args);
         break;
 
       case 'mails_save_draft':
-        result = await mailsSaveDraft(client, request.params.arguments ?? {});
+        result = await mailsSaveDraft(client, args);
         break;
 
       case 'mails_update_draft':
-        result = await mailsUpdateDraft(client, request.params.arguments ?? {});
+        result = await mailsUpdateDraft(client, args);
         break;
 
       case 'mails_move':
-        result = await mailsMove(client, request.params.arguments ?? {});
+        result = await mailsMove(client, args);
         break;
 
       case 'mails_mark_read':
-        result = await mailsMarkRead(client, request.params.arguments ?? {});
+        result = await mailsMarkRead(client, args);
         break;
 
       case 'mails_flag':
-        result = await mailsFlag(client, request.params.arguments ?? {});
+        result = await mailsFlag(client, args);
         break;
 
       case 'mails_delete':
-        result = await mailsDelete(client, request.params.arguments ?? {});
+        result = await mailsDelete(client, args);
         break;
 
       // Contacts Module
       case 'contacts_list':
-        result = await contactsList(client, request.params.arguments ?? {});
+        result = await contactsList(client, args);
         break;
 
       case 'contacts_get':
-        result = await contactsGet(client, request.params.arguments ?? {});
+        result = await contactsGet(client, args);
         break;
 
       case 'contacts_create':
-        result = await contactsCreate(client, request.params.arguments ?? {});
+        result = await contactsCreate(client, args);
         break;
 
       case 'contacts_update':
-        result = await contactsUpdate(client, request.params.arguments ?? {});
+        result = await contactsUpdate(client, args);
         break;
 
       case 'contacts_delete':
-        result = await contactsDelete(client, request.params.arguments ?? {});
+        result = await contactsDelete(client, args);
         break;
 
       case 'contacts_search':
-        result = await contactsSearch(client, request.params.arguments ?? {});
+        result = await contactsSearch(client, args);
         break;
 
       // Calendars Module
       case 'calendars_list':
-        result = await calendarsList(client, request.params.arguments ?? {});
+        result = await calendarsList(client, args);
         break;
 
       case 'calendars_search':
-        result = await calendarsSearch(client, request.params.arguments ?? {});
+        result = await calendarsSearch(client, args);
         break;
 
       case 'calendars_create':
-        result = await calendarsCreate(client, request.params.arguments ?? {});
+        result = await calendarsCreate(client, args);
         break;
 
       case 'calendars_update':
-        result = await calendarsUpdate(client, request.params.arguments ?? {});
+        result = await calendarsUpdate(client, args);
         break;
 
       case 'calendars_delete':
-        result = await calendarsDelete(client, request.params.arguments ?? {});
+        result = await calendarsDelete(client, args);
         break;
 
       default:
