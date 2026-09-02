@@ -3556,6 +3556,7 @@ const allToolDefinitions = [
     name: 'calendars_list',
     description: 'List calendar events with optional date range filtering. ' +
       'DEFAULT BEHAVIOR (no folder specified): Searches across ALL calendar folders. ' +
+      'SHARED CALENDARS: If the user names an owner and calendar, preserve both as folder="owner/calendar" (for example, "Timons Kalender Team" → folder="Timon/Team"). Do not drop the owner name. ' +
       'DATE FILTERING: Optionally filter events by start and end dates. ' +
       'EXAMPLES: ' +
       '(1) "show my upcoming events" → omit all optional parameters; ' +
@@ -3568,7 +3569,7 @@ const allToolDefinitions = [
       properties: {
         folder: {
           type: 'string',
-          description: 'Calendar name, owner/name, owner email/name, or folder ID (optional - if omitted, searches ALL calendars)',
+          description: 'Calendar name, owner/name, owner email/name, or folder ID. If the user names an owner, MUST use owner/name (example: Timon/Team), not just the calendar name. Optional; if omitted, searches ALL calendars.',
         },
         startDate: {
           type: 'string',
@@ -3590,6 +3591,7 @@ const allToolDefinitions = [
     name: 'calendars_search',
     description: 'Search calendar events using full-text QUICKSEARCH across event title, location, description, etc. ' +
       'Searches all fields simultaneously for matching keywords. ' +
+      'SHARED CALENDARS: If the user names an owner, preserve the owner in folder="owner/calendar". ' +
       'USE WHEN: User wants to find events containing specific keywords or phrases. ' +
       'EXAMPLES: ' +
       '(1) "find meeting with John" → {query: "meeting John"}; ' +
@@ -3610,7 +3612,7 @@ const allToolDefinitions = [
         },
         folder: {
           type: 'string',
-          description: 'OPTIONAL - Calendar name, owner/name, owner email/name, or folder ID. If omitted, searches ALL calendars.',
+          description: 'OPTIONAL - Calendar name, owner/name, owner email/name, or folder ID. If the user names an owner, MUST use owner/name (example: Timon/Team). If omitted, searches ALL calendars.',
         },
       },
       required: ['query'],
@@ -3620,6 +3622,7 @@ const allToolDefinitions = [
     name: 'calendars_create',
     description: 'Create a new calendar event with title, start/end times, location, and optional reminder. ' +
       'Supports all-day events, private events, and recurring events. ' +
+      'SHARED CALENDARS: If the user names an owner, preserve the owner in folder="owner/calendar". ' +
       'Use ISO format for dates: YYYY-MM-DDTHH:mm:ss. ' +
       'IMPORTANT FOR ALL-DAY EVENTS: When isAllDay=true, start and end must be THE SAME DATE. ' +
       'Example: Single all-day event on Jan 2 → start="2026-01-02T00:00:00", end="2026-01-02T00:00:00" (same day!). ' +
@@ -3651,7 +3654,7 @@ const allToolDefinitions = [
         },
         folder: {
           type: 'string',
-          description: 'Calendar name, owner/name, owner email/name, or folder ID (optional, uses first available calendar; personal calendars are ordered first)',
+          description: 'Calendar name, owner/name, owner email/name, or folder ID. If the user names an owner, MUST use owner/name (example: Timon/Team). Optional; otherwise uses the first available calendar, with personal calendars ordered first.',
         },
         reminderMinutes: {
           type: 'number',

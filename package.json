@@ -1,6 +1,6 @@
 {
   "name": "@aimbitgmbh/kerio-connect-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP server for Kerio Connect - Mail, Calendar, Contacts, Tasks, and Notes management",
   "author": "aimbit GmbH <info@aimbit.de>",
   "license": "MIT",
@@ -26,6 +26,7 @@
     "dev": "tsx --import dotenv/config src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "test:model": "npm run build && node scripts/test-model-compatibility.mjs",
     "release:check": "npm test && npm audit --omit=dev --audit-level=high && npm pack --dry-run",
     "prepublishOnly": "npm test",
     "clean": "rm -rf dist"
