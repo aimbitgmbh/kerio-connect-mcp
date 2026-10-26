@@ -431,10 +431,19 @@ export const MailsListSchema = z.object({
     .describe('If true, only return unread emails'),
 });
 
+export const MailBodyPageSize = 20000;
+
 export const MailsGetSchema = z.object({
   mailId: z
     .string()
     .describe('Full email ID (keriostorage://mail/...)'),
+  offset: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .default(0)
+    .describe(`Character offset into the body, to continue a mail longer than ${MailBodyPageSize} characters`),
 });
 
 export const MailsShowRecentSchema = z.object({
@@ -1880,7 +1889,6 @@ export async function mailsGet(client: KerioClient, args: unknown): Promise<stri
 
   const toStr = mail.to?.map((t) => t.name ? `${t.name} <${t.address}>` : t.address).join(', ') || 'Unknown';
 
-  // Process email content: strip HTML and truncate if needed
   let emailContent = '(No content available)';
   let contentInfo = '';
 
@@ -1888,19 +1896,15 @@ export async function mailsGet(client: KerioClient, args: unknown): Promise<stri
     const rawContent = mail.displayableParts[0].content;
     const contentType = mail.displayableParts[0].contentType;
 
-    // Strip HTML if it's HTML content
-    let plainText = rawContent;
-    if (contentType === 'ctTextHtml') {
-      plainText = stripHtml(rawContent);
-    }
+    const plainText = contentType === 'ctTextHtml'
+      ? stripHtml(rawContent)
+      : rawContent;
 
-    // Truncate if too long
-    const { text, truncated, originalLength } = truncateText(plainText, 2000);
-    emailContent = text;
+    const pageEnd = params.offset + MailBodyPageSize;
+    emailContent = plainText.slice(params.offset, pageEnd);
 
-    if (truncated) {
-      const remaining = originalLength - text.length;
-      contentInfo = `\n\n... (content truncated for readability - ${remaining} more characters available)`;
+    if (pageEnd < plainText.length) {
+      contentInfo = `\n\n... (characters ${params.offset}-${pageEnd} of ${plainText.length} - call mails_get with offset ${pageEnd} for the rest)`;
     }
   }
 
@@ -2037,7 +2041,7 @@ export async function mailsShowRecent(client: KerioClient, args: unknown): Promi
 
       if (truncated) {
         const remaining = originalLength - text.length;
-        contentInfo = `\n... (content truncated - ${remaining} more characters available)`;
+        contentInfo = `\n... (excerpt - ${remaining} more characters; call mails_get with this mailId for the complete email)`;
       }
     }
 
@@ -2135,6 +2139,33 @@ export async function mailsSearch(client: KerioClient, args: unknown): Promise<s
   return header + formatted;
 }
 
+const HtmlDocument = /<html[\s>]/i;
+const HtmlBlockTag = /<(br|p|div|ul|ol|li|table|h[1-6]|blockquote)[\s/>]/i;
+const HtmlTag = /<[^>]+>/;
+
+/**
+ * Line breaks become <br> unless the body already lays itself out with block tags, so inline
+ * markup like <b> or <a> no longer swallows every line break.
+ */
+function htmlBody(body: string): string {
+  if (HtmlDocument.test(body)) {
+    return body;
+  }
+
+  if (HtmlBlockTag.test(body)) {
+    return `<html><body>${body}</body></html>`;
+  }
+
+  const text = HtmlTag.test(body)
+    ? body
+    : body
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+  return `<html><body>${text.replace(/\n/g, '<br>\n')}</body></html>`;
+}
+
 /**
  * Tool: Send an email
  */
@@ -2151,21 +2182,7 @@ export async function mailsSend(client: KerioClient, args: unknown): Promise<str
   let contentType: 'ctTextHtml' | 'ctTextPlain';
 
   if (params.html) {
-    // HTML mode: Convert plain text line breaks to HTML
-    // Check if body already contains HTML tags
-    const hasHtmlTags = /<[^>]+>/.test(body);
-
-    if (!hasHtmlTags) {
-      // Plain text with \n - convert to HTML
-      body = body
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>\n');
-
-      // Wrap in basic HTML structure
-      body = `<html><body>${body}</body></html>`;
-    }
+    body = htmlBody(body);
     contentType = 'ctTextHtml';
   } else {
     // Plain text mode: Keep as-is
@@ -2197,21 +2214,7 @@ export async function mailsSaveDraft(client: KerioClient, args: unknown): Promis
   let contentType: 'ctTextHtml' | 'ctTextPlain';
 
   if (params.html) {
-    // HTML mode: Convert plain text line breaks to HTML
-    // Check if body already contains HTML tags
-    const hasHtmlTags = /<[^>]+>/.test(body);
-
-    if (!hasHtmlTags) {
-      // Plain text with \n - convert to HTML
-      body = body
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>\n');
-
-      // Wrap in basic HTML structure
-      body = `<html><body>${body}</body></html>`;
-    }
+    body = htmlBody(body);
     contentType = 'ctTextHtml';
   } else {
     // Plain text mode: Keep as-is
@@ -2280,20 +2283,7 @@ export async function mailsUpdateDraft(client: KerioClient, args: unknown): Prom
     let contentType: 'ctTextHtml' | 'ctTextPlain';
 
     if (params.html) {
-      // HTML mode: Convert plain text line breaks to HTML
-      const hasHtmlTags = /<[^>]+>/.test(body);
-
-      if (!hasHtmlTags) {
-        // Plain text with \n - convert to HTML
-        body = body
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\n/g, '<br>\n');
-
-        // Wrap in basic HTML structure
-        body = `<html><body>${body}</body></html>`;
-      }
+      body = htmlBody(body);
       contentType = 'ctTextHtml';
     } else {
       // Plain text mode: Keep as-is
@@ -3222,18 +3212,20 @@ const allToolDefinitions = [
   },
   {
     name: 'mails_get',
-    description: 'Get a specific email with FULL CONTENT by ID (HTML stripped to plain text, smart truncation). ' +
-      'Use this when: (1) you have exact mailId from mails_list/mails_show_recent, or (2) user asks for full email after seeing truncated content. ' +
-      'Email content is automatically: (1) stripped of HTML tags for readability, (2) truncated to ~2000 chars with clear indicator. ' +
-      'If truncated, shows: "... (content truncated - X more characters available)". ' +
-      'DO NOT instruct user to call this function - they cannot. You call it when user asks for more. ' +
-      'NOTE: For most queries, use mails_show_recent instead (simpler, one call).',
+    description: 'Get a specific email with its COMPLETE CONTENT by ID (HTML stripped to plain text). ' +
+      'Use this whenever you need to read, summarize, or answer an email: list results and mails_show_recent only show excerpts. ' +
+      `Bodies up to ${MailBodyPageSize} characters come back whole. A longer body ends with "call mails_get with offset N for the rest" - call again with that offset until nothing is left. ` +
+      'DO NOT instruct user to call this function - they cannot.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         mailId: {
           type: 'string',
           description: 'Full email ID from mails_list (format: keriostorage://mail/domain/user/folder_uuid/mail_id)',
+        },
+        offset: {
+          type: 'number',
+          description: `Character offset into the body (default 0). Only needed for bodies longer than ${MailBodyPageSize} characters.`,
         },
       },
       required: ['mailId'],
@@ -3244,8 +3236,8 @@ const allToolDefinitions = [
     description: 'Show recent emails with FULL CONTENT in a single call (RECOMMENDED for "show/read" queries). ' +
       'Returns email(s) with: subject, body, headers - all in one call. Content is: (1) HTML stripped to plain text, (2) smart truncated. ' +
       'Single email: ~2000 chars max. Multiple emails: ~1000 chars each. ' +
-      'OUTPUT HANDLING: If you see "(content truncated - X more characters available)", the mailId is shown in the output. ' +
-      'If user asks for the full email, call mails_get with that mailId. DO NOT tell user to call functions - they cannot. ' +
+      'OUTPUT HANDLING: If you see "(excerpt - X more characters ...)", the mailId is shown in the output. ' +
+      'Before summarizing or answering that email, call mails_get with that mailId. DO NOT tell user to call functions - they cannot. ' +
       'WHEN TO USE: ' +
       '- User says "show me my email", "read my email", "what\'s my latest email" → USE THIS! ' +
       '- "show me my most recent email" → {limit: 1} ' +

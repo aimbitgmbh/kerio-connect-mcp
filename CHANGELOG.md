@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file. The project
 follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `mails_get` returns the complete body instead of ~2000 characters; bodies
+  over 20000 characters continue with the new `offset` parameter.
+- Mails and drafts with inline markup such as `<b>` keep their line breaks.
+
 ## [0.2.1] - 2026-09-02
 
 ### Added
