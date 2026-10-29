@@ -66,3 +66,22 @@ test('escapes plain text and leaves block-level HTML as written', async () => {
     '<html><body><p>Hi,</p>\n<p>Done.</p></body></html>',
   ]);
 });
+
+test('preserves preformatted HTML and explicit plain text for all write operations', async () => {
+  const { client, bodies } = createClient();
+  const body = '<pre>first\nsecond</pre>';
+  await mailsSaveDraft(client, { to: ['a@example.test'], subject: 'Hi', body });
+  assert.equal(bodies[0], `<html><body>${body}</body></html>`);
+  await mailsSend(client, { to: ['a@example.test'], subject: 'Hi', body, html: false });
+  await mailsSaveDraft(client, { to: ['a@example.test'], subject: 'Hi', body, html: false });
+  await mailsUpdateDraft(client, { draftId: 'draft-1', body, html: false });
+  assert.deepEqual(bodies.slice(1), [body, body, body]);
+});
+
+test('rejects invalid mail offsets before making an API request', async () => {
+  const { client } = createClient();
+  client.getMailById = async () => { assert.fail('must validate before requesting'); };
+  for (const offset of [-1, 0.5, '20000']) {
+    await assert.rejects(mailsGet(client, { mailId: 'mail-1', offset }));
+  }
+});

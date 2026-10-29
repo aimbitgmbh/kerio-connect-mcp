@@ -2140,7 +2140,7 @@ export async function mailsSearch(client: KerioClient, args: unknown): Promise<s
 }
 
 const HtmlDocument = /<html[\s>]/i;
-const HtmlBlockTag = /<(br|p|div|ul|ol|li|table|h[1-6]|blockquote)[\s/>]/i;
+const HtmlBlockTag = /<(br|p|div|ul|ol|li|table|h[1-6]|blockquote|pre|hr|address|article|aside|section|header|footer|main|nav|figure|figcaption|dl|dt|dd|form|fieldset|details|summary|textarea|style|script)[\s/>]/i;
 const HtmlTag = /<[^>]+>/;
 
 /**
@@ -3224,7 +3224,9 @@ const allToolDefinitions = [
           description: 'Full email ID from mails_list (format: keriostorage://mail/domain/user/folder_uuid/mail_id)',
         },
         offset: {
-          type: 'number',
+          type: 'integer',
+          minimum: 0,
+          default: 0,
           description: `Character offset into the body (default 0). Only needed for bodies longer than ${MailBodyPageSize} characters.`,
         },
       },

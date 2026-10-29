@@ -10,6 +10,8 @@ follows [Semantic Versioning](https://semver.org/).
 - `mails_get` returns the complete body instead of ~2000 characters; bodies
   over 20000 characters continue with the new `offset` parameter.
 - Mails and drafts with inline markup such as `<b>` keep their line breaks.
+- Preserve preformatted HTML and explicit plain-text mail bodies.
+- Updated the MCP SDK, HTTP client, validation library, and transitive dependencies to address published security advisories.
 
 ## [0.2.1] - 2026-09-02
 
