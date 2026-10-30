@@ -5,6 +5,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-30
+
 ### Fixed
 
 - `mails_get` returns the complete body instead of ~2000 characters; bodies
@@ -55,6 +57,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 - Initial public release of the Kerio Connect MCP server.
 
+[0.2.2]: https://github.com/aimbitgmbh/kerio-connect-mcp/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/aimbitgmbh/kerio-connect-mcp/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/aimbitgmbh/kerio-connect-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/aimbitgmbh/kerio-connect-mcp/releases/tag/v0.1.0
